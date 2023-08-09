@@ -1,21 +1,8 @@
 # Start configuration added by Zim install {{{
 #
 # User configuration sourced by interactive shells
+
 #
-
-#-----------------
-# PROXY configuration
-#-------------------
-if [ -z ${http_proxy+x} ]; then export http_proxy=http://w3p2.atos-infogerance.fr:8080/; fi
-if [ -z ${HTTP_PROXY+x} ]; then export HTTP_PROXY=$http_proxy; fi
-if [ -z ${ftp_proxy+x} ]; then export ftp_proxy=http://w3p2.atos-infogerance.fr:8080/; fi
-if [ -z ${FTP_PROXY+x} ]; then export FTP_PROXY=$ftp_proxy; fi
-if [ -z ${all_proxy+x} ]; then export all_proxy=http://w3p2.atos-infogerance.fr:8080/; fi
-if [ -z ${ALL_PROXY+x} ]; then export ALL_PROXY=$all_proxy; fi
-if [ -z ${https_proxy+x} ]; then export https_proxy=http://w3p2.atos-infogerance.fr:8080/; fi
-if [ -z ${HTTPS_PROXY+x} ]; then export HTTPS_PROXY=$https_proxy; fi
-if [ -z ${no_proxy+x} ]; then export no_proxy='localhost','127.0.0.0/8','::1','*.bull.fr','*.bull.com','*.bull.net','10.223.20.83','129.181.0.0/16','129.182.0.0/16','129.183.0.0/16','129.184.0.0/16','129.185.0.0/16','141.112.34.0/24','192.168.0.0/16','172.16.0.0/16','172.31.0.0/16','172.23.0.0/16','10.0.0.0/8','200.245.144.8','*.intranet.amesys.fr','*.global.ad','*.myatos.net','*.adminarea.net','*.saacon.net','*.my-it-solutions.net','*.int.atosorigin.com','*.ao-srv.com'; fi
-
 # -----------------
 # Zsh configuration
 # -----------------
