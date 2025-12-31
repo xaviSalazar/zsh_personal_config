@@ -144,11 +144,6 @@ SAVEHIST=1000
 HISTFILE=~/.zsh_history
 
 # Use modern completion system
-
-# Completion system
-autoload -Uz compinit
-compinit
-
 # Colors for completion
 eval "$(dircolors -b)"
 
