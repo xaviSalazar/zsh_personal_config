@@ -79,9 +79,37 @@ vim.pack.add({
   "https://github.com/nvim-tree/nvim-web-devicons",
 
   -- Themes
-  "https://github.com/vague-theme/vague.nvim", 
+  "https://github.com/vague-theme/vague.nvim",
+  "https://github.com/folke/tokyonight.nvim",
+
+  -- UI
+  "https://github.com/akinsho/bufferline.nvim",
+  "https://github.com/Isrothy/neominimap.nvim",
+  "https://github.com/folke/snacks.nvim",
+  "https://github.com/nvim-lualine/lualine.nvim",
+  "https://github.com/folke/which-key.nvim",
+
+  -- Command-line completion for ':' and '/'
+  "https://github.com/hrsh7th/cmp-cmdline",
 })
-vim.cmd.colorscheme('vague')
+if not pcall(vim.cmd.colorscheme, "vague") then
+  pcall(vim.cmd.colorscheme, "tokyonight")
+end
+
+-- Make window borders as visible as herdr's pane outlines (from bull-toolchain
+-- options.lua). Reapplied on every colorscheme change so a :colorscheme call
+-- doesn't wipe it.
+local function set_window_borders()
+  vim.api.nvim_set_hl(0, "WinSeparator", { fg = "#82AAFF", bg = "NONE" })
+end
+
+local borders_group = vim.api.nvim_create_augroup("window_borders", { clear = true })
+vim.api.nvim_create_autocmd({ "VimEnter", "ColorScheme" }, {
+  group = borders_group,
+  callback = function()
+    vim.schedule(set_window_borders)
+  end,
+})
 -- =========================================
 -- OSC52 Clipboard
 -- =========================================
@@ -89,31 +117,67 @@ keymap("n", "<leader>c", "<Plug>OSCYankOperator")
 keymap("n", "<leader>cc", "<leader>c_", { remap = true })
 keymap("v", "<leader>c", "<Plug>OSCYankVisual")
 
--- =========================================
--- Treesitter (SAFE LOAD)
--- =========================================
-vim.api.nvim_create_autocmd("User", {
-  pattern = "PackLoaded",
-  callback = function()
-    local ok, ts = pcall(require, "nvim-treesitter.configs")
-    if not ok then return end
+-- Auto-mirror real yanks (y, not d/c/x) into the system clipboard via OSC52.
+-- Provider must exist before anything touches the + register.
+local function osc52_copy(lines, _)
+  local seq = "\27]52;c;" .. vim.base64.encode(table.concat(lines, "\n")) .. "\7"
+  local tty = io.open("/dev/tty", "w")
+  if tty then
+    tty:write(seq)
+    tty:close()
+  else
+    vim.api.nvim_chan_send(2, seq)
+  end
+end
 
-    ts.setup({
-      ensure_installed = {
-        "lua",
-        "javascript",
-        "typescript",
-        "tsx",
-        "html",
-        "css",
-        "json",
-        "c",
-        "cpp",
-        "bash",
-      },
-      highlight = { enable = true },
-      indent = { enable = true },
-    })
+local function paste_local()
+  return vim.split(vim.fn.getreg('"'), "\n"), vim.fn.getregtype('"')
+end
+
+vim.g.clipboard = {
+  name = "osc52-bel",
+  copy = { ["+"] = osc52_copy, ["*"] = osc52_copy },
+  paste = { ["+"] = paste_local, ["*"] = paste_local },
+}
+
+-- Don't route every register operation through the clipboard; deletes would
+-- clobber it and emit an OSC 52 sequence on every dd.
+vim.opt.clipboard = ""
+
+vim.api.nvim_create_autocmd("TextYankPost", {
+  group = vim.api.nvim_create_augroup("yank_to_clipboard", { clear = true }),
+  callback = function()
+    local e = vim.v.event
+    if e.operator == "y" then
+      vim.fn.setreg("+", e.regcontents, e.regtype)
+    end
+  end,
+})
+
+-- =========================================
+-- Treesitter (new main-branch API)
+-- =========================================
+local ts_parsers = {
+  "lua",
+  "javascript",
+  "typescript",
+  "tsx",
+  "html",
+  "css",
+  "json",
+  "c",
+  "cpp",
+  "bash",
+}
+
+require("nvim-treesitter").install(ts_parsers)
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = ts_parsers,
+  callback = function(event)
+    -- pcall: install() is async, so the parser may not be compiled yet
+    pcall(vim.treesitter.start, event.buf)
+    vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
   end,
 })
 
@@ -131,6 +195,165 @@ end)
 pcall(function()
   require("gitsigns").setup()
 end)
+
+-- =========================================
+-- Bufferline
+-- =========================================
+require("bufferline").setup({})
+
+-- buffer navigation
+keymap("n", "<leader>bh", "<cmd>BufferLineCyclePrev<CR>", { desc = "Previous buffer" })
+keymap("n", "<leader>bl", "<cmd>BufferLineCycleNext<CR>", { desc = "Next buffer" })
+keymap("n", "<leader>b<Left>", "<cmd>BufferLineCyclePrev<CR>", { desc = "Previous buffer" })
+keymap("n", "<leader>b<Right>", "<cmd>BufferLineCycleNext<CR>", { desc = "Next buffer" })
+
+-- delete buffers in that direction
+keymap("n", "<leader>bH", "<cmd>BufferLineCloseLeft<CR>", { desc = "Delete buffers left" })
+keymap("n", "<leader>bL", "<cmd>BufferLineCloseRight<CR>", { desc = "Delete buffers right" })
+keymap("n", "<leader>b<S-Left>", "<cmd>BufferLineCloseLeft<CR>", { desc = "Delete buffers left" })
+keymap("n", "<leader>b<S-Right>", "<cmd>BufferLineCloseRight<CR>", { desc = "Delete buffers right" })
+
+-- =========================================
+-- Neominimap
+-- =========================================
+vim.opt.wrap = false
+vim.opt.sidescrolloff = 16
+
+vim.g.neominimap = {
+  auto_enable = false,
+  layout = "float",
+  float = {
+    minimap_width = 14,
+    window_border = "none",
+  },
+
+  delay = 400,
+  fold = { enabled = false },
+  sync_cursor = true,
+  click = { enabled = true, auto_switch_focus = false },
+  search = { enabled = false },
+  mark = { enabled = false },
+
+  treesitter = { enabled = true },
+  git = { enabled = true, mode = "sign" },
+  diagnostic = {
+    enabled = true,
+    severity = vim.diagnostic.severity.WARN,
+    mode = "sign",
+  },
+
+  -- Skip the minimap on buffers where building it is the expensive part.
+  buf_filter = function(bufnr)
+    if not vim.api.nvim_buf_is_loaded(bufnr) then
+      return false
+    end
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    local stat = name ~= "" and (vim.uv or vim.loop).fs_stat(name) or nil
+    if stat and stat.size > 512 * 1024 then
+      return false
+    end
+    if vim.api.nvim_buf_line_count(bufnr) > 20000 then
+      return false
+    end
+    return true
+  end,
+
+  exclude_filetypes = {
+    "help",
+    "man",
+    "qf",
+    "checkhealth",
+    "gitcommit",
+    "gitrebase",
+    "bigfile",
+    "neo-tree",
+    "oil",
+    "netrw",
+    "toggleterm",
+    "lazy",
+    "mason",
+    "lazyterm",
+    "trouble",
+    "aerial",
+    "noice",
+    "grug-far",
+    "dbout",
+    "snacks_dashboard",
+    "snacks_terminal",
+    "snacks_notif",
+    "snacks_notif_history",
+    "snacks_win_backdrop",
+    "snacks_input",
+    "snacks_picker_list",
+    "snacks_picker_input",
+    "snacks_picker_preview",
+  },
+
+  exclude_buftypes = {
+    "nofile",
+    "nowrite",
+    "quickfix",
+    "terminal",
+    "prompt",
+    "help",
+    "acwrite",
+  },
+}
+
+-- vim.pack adds with :packadd! during init.lua, so plugin/ scripts never
+-- ran; source it explicitly now that vim.g.neominimap is set.
+vim.cmd.packadd("neominimap.nvim")
+
+keymap("n", "<leader>mm", "<cmd>Neominimap Toggle<CR>", { desc = "Toggle minimap (global)" })
+keymap("n", "<leader>mr", "<cmd>Neominimap Refresh<CR>", { desc = "Refresh minimap" })
+keymap("n", "<leader>mb", "<cmd>Neominimap BufToggle<CR>", { desc = "Toggle minimap (buffer)" })
+keymap("n", "<leader>mw", "<cmd>Neominimap WinToggle<CR>", { desc = "Toggle minimap (window)" })
+keymap("n", "<leader>mf", "<cmd>Neominimap ToggleFocus<CR>", { desc = "Toggle focus on minimap" })
+
+-- =========================================
+-- Snacks (explorer + picker)
+-- =========================================
+require("snacks").setup({
+  explorer = { hidden = true, ignored = true },
+  picker = {
+    sources = {
+      explorer = { hidden = true, ignored = true },
+      files = { hidden = true, ignored = true },
+    },
+  },
+})
+
+keymap("n", "<leader>e", function() require("snacks").explorer() end, { desc = "File explorer" })
+keymap("n", "<leader>f.", function() require("snacks").picker.files() end, { desc = "Files (snacks, incl. hidden)" })
+
+-- =========================================
+-- Lualine
+-- =========================================
+vim.opt.laststatus = 3
+vim.opt.showmode = false
+
+require("lualine").setup({
+  options = {
+    theme = "auto",
+    icons_enabled = true,
+    globalstatus = true,
+    section_separators = { left = "", right = "" },
+    component_separators = { left = "", right = "" },
+  },
+})
+
+-- =========================================
+-- Which-key
+-- =========================================
+require("which-key").setup({
+  spec = {
+    { "<leader>b", group = "buffers", icon = "󰈩" },
+    { "<leader>c", group = "clipboard" },
+    { "<leader>f", group = "find" },
+    { "<leader>m", group = "minimap", icon = "󰍉" },
+    { "<leader>e", group = "explorer" },
+  },
+})
 
 -- =========================================
 -- LSP (INCLUDING ESLINT)
@@ -253,6 +476,59 @@ cmp.setup({
 })
 
 -- =========================================
+-- Cmdline completion (':' and '/')
+-- =========================================
+local cmdline_mapping = cmp.mapping.preset.cmdline({
+  -- Only confirm when an entry is actually selected. Otherwise <CR>
+  -- falls through and runs what you typed, rather than silently
+  -- accepting a suggestion you never looked at.
+  ["<CR>"] = cmp.mapping(function(fallback)
+    if cmp.visible() and cmp.get_active_entry() then
+      cmp.confirm({ select = true })
+    else
+      fallback()
+    end
+  end, { "c" }),
+  ["<Tab>"] = cmp.mapping(function(fallback)
+    if cmp.visible() then
+      cmp.select_next_item()
+    else
+      fallback()
+    end
+  end, { "c" }),
+  ["<S-Tab>"] = cmp.mapping(function(fallback)
+    if cmp.visible() then
+      cmp.select_prev_item()
+    else
+      fallback()
+    end
+  end, { "c" }),
+})
+
+-- ':' completes paths first, then commands.
+cmp.setup.cmdline(":", {
+  mapping = cmdline_mapping,
+  sources = cmp.config.sources({
+    { name = "path" },
+  }, {
+    { name = "cmdline" },
+  }),
+  completion = {
+    completeopt = "menu,menuone,noselect",
+  },
+  preselect = cmp.PreselectMode.Item,
+})
+
+-- '/' and '?' complete from the current buffer.
+cmp.setup.cmdline({ "/", "?" }, {
+  mapping = cmdline_mapping,
+  sources = {
+    { name = "buffer" },
+  },
+  preselect = cmp.PreselectMode.Item,
+})
+
+-- =========================================
 -- Telescope
 -- =========================================
 require("telescope").setup({
@@ -304,7 +580,11 @@ vim.diagnostic.config({
   signs = true,
   underline = true,
   update_in_insert = false,
-  jump = { float = true },
+  jump = {
+    on_jump = function()
+      vim.diagnostic.open_float()
+    end,
+  },
 })
 
 -- =========================================
