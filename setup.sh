@@ -18,11 +18,38 @@ chmod +x setup.sh 2>/dev/null || true
 
 # 2. Link each file into its live location.
 #    - Existing symlink -> just re-point it.
-#    - Existing real file (e.g. an Ubuntu-default ~/.zshrc) -> moved to $BACKUP_BASE, never deleted.
+#    - Existing real file (e.g. an Ubuntu-default ~/.zshrc) -> its content is
+#      merged into $HOME/.zshrc.local (so tool-installer additions like the
+#      opencode PATH line are never lost), then it is moved to $BACKUP_BASE.
+#      The original real file is never deleted.
+merge_into_local() {
+  # $1 = real file being replaced; $2 = human-readable name (e.g. .zshrc)
+  local realfile="$1" name="$2" localfile="$HOME/.zshrc.local"
+  local newlines
+  # Lines in the real file that are NOT in the repo version.
+  newlines=$(grep -Fxv -f "$REPO_DIR/$name" "$realfile" 2>/dev/null || true)
+  if [[ -n "$newlines" ]]; then
+    mkdir -p "$(dirname "$localfile")"
+    touch "$localfile"
+    # Skip lines already present in .zshrc.local (idempotent re-runs).
+    local toadd
+    toadd=$(printf '%s\n' "$newlines" | grep -Fxv -f "$localfile" 2>/dev/null || true)
+    if [[ -n "$toadd" ]]; then
+      {
+        echo ""
+        echo "# --- merged from pre-existing $name (moved by setup.sh) ---"
+        printf '%s\n' "$toadd"
+      } >> "$localfile"
+      echo "merged: lines from pre-existing $name appended to .zshrc.local"
+    fi
+  fi
+}
+
 link() {
   local src="$1" dst="$2"
   mkdir -p "$(dirname "$dst")"
   if [[ -e "$dst" && ! -L "$dst" ]]; then
+    [[ "$dst" == "$HOME/.zshrc" ]] && merge_into_local "$dst" "$src"
     mkdir -p "$BACKUP_BASE"
     mv "$dst" "$BACKUP_BASE/$(echo "$dst" | sed 's|^/||; s|/|_|g').bak"
   fi
