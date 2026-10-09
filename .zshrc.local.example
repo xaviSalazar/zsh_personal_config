@@ -1,0 +1,21 @@
+# .zshrc.local — per-machine overrides (NOT committed to the repo)
+#
+# Copy this to ~/.zshrc.local and edit. It is sourced at the end of .zshrc
+# (see the "Per-machine / per-environment overrides" block) and is never
+# touched by setup.sh, so it survives re-linking and repo updates.
+#
+# Anything that varies by machine belongs here:
+#   - GPU / CUDA / ROCm environment
+#   - Local tool binaries you installed by hand
+#   - Machine-specific PATH additions
+#   - Secrets / API keys (keep them local, out of git)
+
+# --- CUDA (uncomment + adjust if this machine has it) -----------------------
+# export CUDA_HOME=/usr/local/cuda
+# export PATH="$CUDA_HOME/bin:$PATH"
+# export LD_LIBRARY_PATH="$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+# --- opencode (uncomment if installed) --------------------------------------
+# export PATH="$HOME/.opencode/bin:$PATH"
+
+# --- anything else specific to THIS machine ---------------------------------

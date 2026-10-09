@@ -1,0 +1,4 @@
+# Per-machine overrides — never commit these (they may contain secrets/paths).
+# The starter template IS committed: see .zshrc.local.example
+.zshrc.local
+*.local

@@ -162,3 +162,15 @@ zstyle ':completion:*' select-prompt '%S➜ %p%s'
 
 zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
+
+# ---------------------------------------------
+# Per-machine / per-environment overrides
+# ---------------------------------------------
+# Anything that varies by machine (CUDA, local tool PATHs, secrets, etc.)
+# goes in ~/.zshrc.local — a real file that is NOT in this repo and is
+# never touched by setup.sh. This keeps the repo portable: clone + setup.sh
+# works on any machine, and machine-specific lines survive re-linking.
+# A starter template lives at .zshrc.local.example in this repo.
+if [[ -f "$HOME/.zshrc.local" ]]; then
+  source "$HOME/.zshrc.local"
+fi
