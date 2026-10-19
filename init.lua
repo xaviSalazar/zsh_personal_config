@@ -206,6 +206,13 @@ keymap("n", "<leader>bh", "<cmd>BufferLineCyclePrev<CR>", { desc = "Previous buf
 keymap("n", "<leader>bl", "<cmd>BufferLineCycleNext<CR>", { desc = "Next buffer" })
 keymap("n", "<leader>b<Left>", "<cmd>BufferLineCyclePrev<CR>", { desc = "Previous buffer" })
 keymap("n", "<leader>b<Right>", "<cmd>BufferLineCycleNext<CR>", { desc = "Next buffer" })
+-- Navigate between open file buffers with gt / gT
+keymap("n", "gt", "<cmd>BufferLineCycleNext<CR>", {
+  desc = "Next buffer",
+})
+keymap("n", "gT", "<cmd>BufferLineCyclePrev<CR>", {
+  desc = "Previous buffer",
+})
 
 -- delete buffers in that direction
 keymap("n", "<leader>bH", "<cmd>BufferLineCloseLeft<CR>", { desc = "Delete buffers left" })
